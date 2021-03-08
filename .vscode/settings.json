@@ -1,0 +1,7 @@
+{
+	"files.associations": {
+		"functional": "c",
+		"math.h": "c",
+		"time.h": "c"
+	}
+}
