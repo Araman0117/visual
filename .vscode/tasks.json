@@ -7,6 +7,7 @@
             "args": [
                 "-g",
                 "${file}",
+                "gnl/get_next_line.c", "gnl/get_next_line_utils.c",
                 "mlx_linux/libmlx_Linux.a", "-L/usr/lib",
                 "-lXext", "-lX11", "-lm", "-lz", "-o",
                 "${fileDirname}/${fileBasenameNoExtension}"

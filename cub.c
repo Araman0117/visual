@@ -1,5 +1,10 @@
 #include "mlx_linux/mlx.h"
+#include "gnl/get_next_line.h"
 #include <math.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -10,43 +15,49 @@
 
 int	FPS = 0;
 
-typedef struct	s_dot
+typedef struct		s_dot
 {
-	double		x;
-	double		y;
-}				t_dot;
+	double			x;
+	double			y;
+}					t_dot;
 
-typedef struct	s_frame
+typedef struct		s_frame
 {
-	void		*ptr;
-	char		*addr;
-	int			bits_per_pixel;
-	int			line_length;
-	int			endian;
-	int			width;
-	int			height;
-}				t_frame;
+	void			*ptr;
+	char			*addr;
+	int				bits_per_pixel;
+	int				line_length;
+	int				endian;
+	int				width;
+	int				height;
+}					t_frame;
 
-typedef struct	s_keys
+typedef struct		s_keys
 {
-	int			w;
-	int			a;
-	int			s;
-	int			d;
-	int			up;
-	int			left;
-	int			down;
-	int			right;
-	int			esc;
-}				t_keys;
+	int				w;
+	int				a;
+	int				s;
+	int				d;
+	int				up;
+	int				left;
+	int				down;
+	int				right;
+	int				esc;
+}					t_keys;
 
-typedef struct	s_vars
+typedef struct		s_vars
 {
-	void		*mlx;
-	void		*win;
-	t_frame		img;
-	t_keys		keys;
-}				t_vars;
+	void			*mlx;
+	void			*win;
+	t_frame			img;
+	t_keys			keys;
+}					t_vars;
+
+typedef struct		s_list
+{
+	char			*str;
+	struct s_list	*next;
+}					t_list;
 
 
 void	img_init(t_frame *img)
@@ -204,6 +215,14 @@ void	define_window_center(t_frame *img, t_dot *dot)
 	dot->y = (double)(img->height / 2);
 }
 
+int		compare_args(int n1, int n2)
+{
+	if (n1 > n2)
+		return (n1);
+	else
+		return (n2);
+}
+
 
 void	put_pixel(t_frame *img, t_dot *dot, int color)
 {
@@ -328,196 +347,85 @@ void	draw_figure(t_frame *img, t_dot *center, int radius, double rot, int thick,
 }
 
 
-void	put_delta(t_frame *img, t_dot *delta, double len)
-{
-	t_dot	dot;
-
-	if (delta->x)
-	{
-		if (delta->x > 0)
-			dot.x = img->width / 2 + 5;
-		else if (delta->x < 0)
-			dot.x = img->width / 2 - 5;
-		dot.y = img->height / 2;
-		put_line(img, &dot, 'r', (int)(len * delta->x), 0x00ffffff);
-	}
-	if (delta->y)
-	{
-		if (delta->y > 0)
-			dot.y = img->height / 2 + 5;
-		else if (delta->y < 0)
-			dot.y = img->height / 2 - 5;
-		dot.x = img->width / 2;
-		put_line(img, &dot, 'd', (int)(len * delta->y), 0x00ffffff);
-	}
-}
-
-void	put_tracer(t_frame *img, t_dot *dot, t_dot *delta, double len)
-{
-	t_dot	start;
-	t_dot	end;
-
-	start = *dot;
-	end.x = dot->x - len * delta->x;
-	end.y = dot->y - len * delta->y;
-	put_vec(img, start, end, 0x00ffffff);
-}
-
-void	count_delta(double *var, double increm, double decrem, int accel, int decel)
-{
-	increm /= FPS;
-	decrem /= FPS;
-	if (accel && *var < 1.0)
-		*var += increm;
-	if (decel && *var > -1.0)
-		*var -= increm;
-	if (*var < 0.0)
-	{
-		*var += decrem;
-		if (*var > 0.0)
-			*var = 0.0;
-	}
-	else if (*var > 0.0)
-	{
-		*var -= decrem;
-		if (*var < 0.0)
-			*var = 0.0;
-	}
-
-	// x / fps = inc
-	// x / 600 = 0.004
-	// x = 2.4
-
-	// x / fps = dec
-	// x / 600 = 0.002
-	// x = 1.2
-}
-
-void	define_walls(double *var, double *axis, int end, double coeff)
-{
-	double	temp;
-
-	if (*var < 0.0)
-	{
-		*var = 0.0;
-		*axis *= -coeff;
-	}
-	else if (*var > (double)end)
-	{
-		*var = (double)end;
-		*axis *= -coeff;
-	}
-}
-
-void	define_direction(t_frame *img, t_dot *dot, t_keys *keys, double speed)
-{
-	static t_dot	delta;
-	double			temp;
-
-	count_delta(&delta.x, 2.4, 1.2, keys->d, keys->a);
-	count_delta(&delta.y, 2.4, 1.2, keys->s, keys->w);
-
-	dot->x += delta.x * speed;
-	dot->y += delta.y * speed;
-
-	put_tracer(img, dot, &delta, 100.0);
-
-	define_walls(&dot->x, &delta.x, img->width, 0.4);
-	define_walls(&dot->y, &delta.y, img->height, 0.4);
-
-	put_delta(img, &delta, 50.0);
-}
-
-double	count_speed(double x)
-{
-	return (x / (double)FPS);
-
-	// x / fps = speed
-	// x / 330 = 10
-	// x = 3300
-}
-
-double	count_rot(double x)
-{
-	return (x / (double)FPS);
-
-	// x / fps = rot
-	// x / 330 = 0.5
-	// x = 115
-}
-
-int		control_fig(t_vars *vars)
-{
-	static int		flag;
-	static t_dot	dot;
-	static double	rot;
-
-	if (vars->img.ptr)
-		mlx_destroy_image(vars->mlx, vars->img.ptr);
-	img_create(vars->mlx, &vars->img);
-	rot += count_rot(120.0);
-	if (rot > 360.0)
-		rot = 0.0;
-	if (!flag++)
-		define_window_center(&vars->img, &dot);
-	count_fps();
-	define_direction(&vars->img, &dot, &vars->keys, count_speed(3000.0));
-	draw_figure(&vars->img, &dot, 10, rot, 1, 4, 0x00ffffff);
-	mlx_put_image_to_window(vars->mlx, vars->win, vars->img.ptr, 0, 0);
-	mlx_do_sync(vars->mlx);
-	if(vars->keys.esc)
-		close_win(vars);
-}
-
-void	moving_with_keys(int win_width, int win_height)
-{
-	t_vars	vars;
-
-	vars_init(&vars, win_width, win_height, "2D game");
-	mlx_hook(vars.win, 2, 1L<<0, set_keypress, &vars.keys);
-	mlx_hook(vars.win, 3, 1L<<1, set_keyrelease, &vars.keys);
-	mlx_loop_hook(vars.mlx, control_fig, &vars);
-	mlx_loop(vars.mlx);
-}
-
-
-int		fps_testing(t_vars *vars)
-{
-	static double	rot;
-	t_dot			t1;
-
-	if (vars->img.ptr)
-		mlx_destroy_image(vars->mlx, vars->img.ptr);
-	img_create(vars->mlx, &vars->img);
-	define_window_center(&vars->img, &t1);
-	rot += 0.1;
-	if (rot > 360.0)
-		rot = 0.0;
-	// put_pixel(&(vars->img), &t1, 0x00ffffff);
-	draw_figure(&vars->img, &t1, 100, rot, 1, 5, 0x00ffffff);
-	mlx_put_image_to_window(vars->mlx, vars->win, vars->img.ptr, 0, 0);
-	count_fps();
-	if(vars->keys.esc)
-		close_win(vars);
-}
-
-void	fps_test(int win_width, int win_height)
-{
-	t_vars	vars;
-
-	vars_init(&vars, win_width, win_height, "fps test");
-	mlx_hook(vars.win, 2, 1L<<0, set_keypress, &vars.keys);
-	mlx_hook(vars.win, 3, 1L<<1, set_keyrelease, &vars.keys);
-	mlx_loop_hook(vars.mlx, fps_testing, &vars);
-	mlx_loop(vars.mlx);
-}
-
-
 int		main(void)
 {
-	// mlx_do_key_autorepeatoff(vars.mlx);
-	// mlx_do_key_autorepeaton(vars.mlx);
+	int		fd;
+	char	*str;
+	int		cols;
+	int		strs;
+	fd = open("map.cub", O_RDONLY);
 
-	moving_with_keys(640, 480);
-	// fps_test(640, 480);
+	cols = 0;
+	strs = 0;
+	while (get_next_line(fd, &str))
+	{
+		++strs;
+		cols = compare_args(cols, slen(str));
+	}
+	close(fd);
+
+
+	char	buf[strs][cols + 1];
+	int		x;
+	int		y;
+
+	fd = open("map.cub", O_RDONLY);
+	x = 0;
+	while (get_next_line(fd, &str))
+	{
+		y = 0;
+		while (y < slen(str))
+		{
+			buf[x][y] = str[y];
+			++y;
+		}
+		buf[x][y] = 0 ;
+		++x;
+	}
+	close(fd);
+
+	t_vars	vars;
+	t_dot	dot;
+	int		i;
+	int		j;
+
+	vars_init(&vars, 500, 500, "test window");
+	img_create(vars.mlx, &vars.img);
+
+	i = 0;
+	while (i < strs)
+	{
+		j = 0;
+		while (j < cols)
+		{
+			if (buf[i][j] == '1')
+			{
+				y = i * 10;
+				while (y < i * 10 + 10)
+				{
+					x = j * 10;
+					while (x < j * 10 + 10)
+					{
+						dot.x = x;
+						dot.y = y;
+						put_pixel(&vars.img, &dot, 0x00ffffff);
+						++x;
+					}
+					++y;
+				}
+			}
+			++j;
+		}
+		++i;
+	}
+
+	mlx_put_image_to_window(vars.mlx, vars.win, vars.img.ptr, 0, 0);
+	mlx_loop(vars.mlx);
+
+	// x = 0;
+	// y = 0;
+	// while (x < strs)
+	// {
+	// 	printf("%s\n", buf[x++]);
+	// }
 }
