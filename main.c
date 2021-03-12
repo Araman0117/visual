@@ -520,4 +520,5 @@ int		main(void)
 
 	moving_with_keys(640, 480);
 	// fps_test(640, 480);
+	return (0);
 }

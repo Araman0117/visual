@@ -53,11 +53,11 @@ typedef struct		s_vars
 	t_keys			keys;
 }					t_vars;
 
-typedef struct		s_list
-{
-	char			*str;
-	struct s_list	*next;
-}					t_list;
+// typedef struct		s_list
+// {
+// 	char			*str;
+// 	struct s_list	*next;
+// }					t_list;
 
 
 void	img_init(t_frame *img)
