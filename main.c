@@ -135,6 +135,16 @@ int		set_keyrelease(int keycode, t_keys *keys)
 }
 
 
+int		abs_int(int n)
+{
+	return (n < 0 ? -n : n);
+}
+
+double	abs_double(double n)
+{
+	return (n < 0 ? -n : n);
+}
+
 double	vec_len(t_dot *start, t_dot end)
 {
 	end.x -= start->x;
@@ -255,6 +265,74 @@ void	put_vec(t_frame *img, t_dot start, t_dot end, int color)
 		start.x = ((start.x - end.x) / (double)veclen) * (double)(veclen - 1) + end.x;
 		start.y = ((start.y - end.y) / (double)veclen) * (double)(veclen - 1) + end.y;
 		--veclen;
+	}
+}
+
+void	put_bresenham_vec(t_frame *img, t_dot start, t_dot end, int color)
+{
+	int	deltax;
+	int	deltay;
+	int	error;
+	int	deltaerr;
+	int	diry;
+	int	dirx;
+
+	deltax = abs_int(end.x - start.x);
+	deltay = abs_int(end.y - start.y);
+	error = 0;
+	deltaerr = deltax > deltay ? deltay + 1 : deltax + 1;
+	dirx = end.x - start.x > 0 ? 1 : -1;
+	diry = end.y - start.y > 0 ? 1 : -1;
+	while (deltax > deltay && start.x != end.x)
+	{
+		put_pixel(img, &start, color);
+		error += deltaerr;
+		if (error >= deltax + 1)
+		{
+			start.y += diry;
+			error -= deltax + 1;
+		}
+		start.x += dirx;
+	}
+	while (deltax <= deltay && start.y != end.y)
+	{
+		put_pixel(img, &start, color);
+		error += deltaerr;
+		if (error >= deltay + 1)
+		{
+			start.x += dirx;
+			error -= deltay + 1;
+		}
+		start.y += diry;
+	}
+}
+
+void	put_bresenham_circ(t_frame *img, t_dot center, int radius, int color)
+{
+	int	x = 0;
+	int	y = radius;
+	int	delta = 1 - 2 * radius;
+	int	error = 0;
+	while (y >= 0)
+	{
+		center.x += x;
+		center.y += y;
+		put_pixel(img, &center, color);
+		center.y -= 2*y;
+		put_pixel(img, &center, color);
+		center.x -= 2*x;
+		put_pixel(img, &center, color);
+		center.y += 2*y;
+		put_pixel(img, &center, color);
+		center.x += x;
+		center.y -= y;
+		error = 2 * (delta + y) - 1;
+		if ((delta < 0) && (error <= 0))
+			delta += 2 * ++x + 1;
+		else if ((delta > 0) && (error > 0))
+			delta -= 2 * --y + 1;
+		else
+			delta += 2 * (++x - --y);
 	}
 }
 
@@ -518,7 +596,26 @@ int		main(void)
 	// mlx_do_key_autorepeatoff(vars.mlx);
 	// mlx_do_key_autorepeaton(vars.mlx);
 
-	moving_with_keys(640, 480);
+	// moving_with_keys(640, 480);
 	// fps_test(640, 480);
+
+	t_vars	vars;
+	t_dot	t1;
+	t_dot	t2;
+
+	vars_init(&vars, 600, 400, "bresenham rastor vector");
+	img_create(vars.mlx, &vars.img);
+
+	t1.x = 300;
+	t1.y = 200;
+
+	t2.x = 300;
+	t2.y = 100;
+
+	put_bresenham_vec(&vars.img, t1, t2, 0x00ffffff);
+	put_bresenham_circ(&vars.img, t1, 100, 0x00ffffff);
+
+	mlx_put_image_to_window(vars.mlx, vars.win, vars.img.ptr, 0, 0);
+	mlx_loop(vars.mlx);
 	return (0);
 }
